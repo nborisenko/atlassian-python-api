@@ -1236,8 +1236,11 @@ class Bitbucket(BitbucketBase):
         if tag_name is not None:
             body["name"] = tag_name
         if tag_name is not None:
-            body["startPoint"] = commit_revision
-        if tag_name is not None:
+            if self.cloud:
+                body["target"] = {"hash": commit_revision}
+            else:
+                body["startPoint"] = commit_revision
+        if tag_name is not None and not self.cloud:
             body["message"] = description
         return self.post(url, data=body)
 
@@ -1971,6 +1974,7 @@ class Bitbucket(BitbucketBase):
         avatar_size=None,
         avatar_scheme=None,
         limit=None,
+        branch=""
     ):
         """
         Get commit list from repo
@@ -1989,6 +1993,8 @@ class Bitbucket(BitbucketBase):
         :return:
         """
         url = self._url_commits(project_key, repository_slug)
+        if branch:
+            url = "{}/{}".format(url, branch)
         params = {"merges": merges}
         if hash_oldest:
             params["since"] = hash_oldest
