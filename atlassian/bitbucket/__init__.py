@@ -2012,7 +2012,15 @@ class Bitbucket(BitbucketBase):
             params["avatarScheme"] = avatar_scheme
         if limit:
             params["limit"] = limit
-        return (self.get(url, params=params) or {}).get("values")
+        commits = []
+        response = (self.get(url, params=params) or {})
+        if response is {}:
+            return []
+        commits += response.get('values')
+        while len(commits) < limit and 'next' in response.keys():
+            response = self.get(response['next'], params=params, absolute=True)
+            commits += response.get('values')
+        return commits[:limit] if len(commits) > limit else commits
 
     def _url_commit(self, project_key, repository_slug, commit_id, api_root=None, api_version=None):
         return "{}/{}".format(
