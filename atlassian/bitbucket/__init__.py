@@ -2018,7 +2018,7 @@ class Bitbucket(BitbucketBase):
             return []
         commits += response.get('values')
         while len(commits) < limit and 'next' in response.keys():
-            response = self.get(response['next'], params=params, absolute=True)
+            response = self.get(response['next'], absolute=True)
             commits += response.get('values')
         return commits[:limit] if len(commits) > limit else commits
 
