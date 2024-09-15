@@ -1236,8 +1236,11 @@ class Bitbucket(BitbucketBase):
         if tag_name is not None:
             body["name"] = tag_name
         if tag_name is not None:
-            body["startPoint"] = commit_revision
-        if tag_name is not None:
+            if self.cloud:
+                body["target"] = {"hash": commit_revision}
+            else:
+                body["startPoint"] = commit_revision
+        if tag_name is not None and not self.cloud:
             body["message"] = description
         return self.post(url, data=body)
 
@@ -1971,6 +1974,7 @@ class Bitbucket(BitbucketBase):
         avatar_size=None,
         avatar_scheme=None,
         limit=None,
+        branch=""
     ):
         """
         Get commit list from repo
@@ -1989,6 +1993,8 @@ class Bitbucket(BitbucketBase):
         :return:
         """
         url = self._url_commits(project_key, repository_slug)
+        if branch:
+            url = "{}/{}".format(url, branch)
         params = {"merges": merges}
         if hash_oldest:
             params["since"] = hash_oldest
@@ -2006,7 +2012,15 @@ class Bitbucket(BitbucketBase):
             params["avatarScheme"] = avatar_scheme
         if limit:
             params["limit"] = limit
-        return (self.get(url, params=params) or {}).get("values")
+        commits = []
+        response = (self.get(url, params=params) or {})
+        if response is {}:
+            return []
+        commits += response.get('values')
+        while len(commits) < limit and 'next' in response.keys():
+            response = self.get(response['next'], absolute=True)
+            commits += response.get('values')
+        return commits[:limit] if len(commits) > limit else commits
 
     def _url_commit(self, project_key, repository_slug, commit_id, api_root=None, api_version=None):
         return "{}/{}".format(
